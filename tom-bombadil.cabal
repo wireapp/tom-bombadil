@@ -1,0 +1,52 @@
+cabal-version: 3.4
+name:          tom-bombadil
+version:       0.1.0.0
+synopsis:
+  Tom BOMbadil creates Bills-of-Materials (BOMs) and pushes them
+
+homepage:      https://github.com/wireapp/tom-bombadil
+author:        Sven Tennie
+maintainer:    sven.tennie@wire.com
+copyright:     (c) 2025 Wire Swiss GmbH
+license:       AGPL-3.0-only
+license-file:  LICENSE
+build-type:    Simple
+
+common warnings
+  ghc-options: -Wwarn
+
+executable create-sbom
+  import:           warnings
+  main-is:          create-sbom.hs
+  hs-source-dirs:   app/
+  default-language: GHC2021
+  build-depends:
+    , aeson                 ^>=2.2.3.0
+    , base
+    , bytestring
+    , containers
+    , directory
+    , optparse-applicative
+    , process
+    , text
+    , time
+    , uuid
+
+executable upload-bom
+  import:           warnings
+  main-is:          upload-bom.hs
+  hs-source-dirs:   app/
+  default-language: GHC2021
+  build-depends:
+    , aeson                 ^>=2.2.3.0
+    , base
+    , base64-bytestring
+    , bytestring
+    , http-client
+    , http-client-tls
+    , http-types
+    , optparse-applicative
+    , process
+    , servant
+    , servant-client
+    , text
