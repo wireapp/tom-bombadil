@@ -1,0 +1,69 @@
+name: CI
+
+# Trigger the workflow on push or pull request, but only for the master branch
+on:
+  pull_request:
+  push:
+    branches: [master]
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# INFO: The following configuration block ensures that only one build runs per branch,
+# which may be desirable for projects with a costly build process.
+# Remove this block from the CI workflow to let each CI job run to completion.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: General linting steps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+
+      - name: nix flake check
+        run: nix flake check
+
+      - name: treefmt - check format
+        run: nix fmt -- --ci
+
+      - name: Haskell build
+        run: nix build .
+
+  bom:
+    name: Build and push the BOM of tom-bombadil itself
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v27
+
+      - name: Set tag output
+        id: vars
+        run: echo "tag_or_branch=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      - name: Check tag
+        run: echo ${TAG}
+        env:
+          TAG: ${{ steps.vars.outputs.tag_or_branch }}
+
+      - name: Build BOM dependencies
+        run: nix build .\#bomDependencies
+
+      - name: Build BOM file
+        run: nix run '.#create-sbom' -- --root-package-name "tom-bombadil"
+
+      - name: Validate BOM file
+        run: nix develop --command bash -c "cyclonedx validate --input-file sbom.json"
+
+      - name: Push BOM file
+        run: >-
+          nix run '.#upload-bom' --
+          --project-name "tom-bombadil" 
+          --project-version "$TAG" 
+          --auto-create 
+          --bom-file ./sbom.json
+        env:
+          TAG: ${{ steps.vars.outputs.tag_or_branch }}
+          DEPENDENCY_TRACK_API_KEY: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
